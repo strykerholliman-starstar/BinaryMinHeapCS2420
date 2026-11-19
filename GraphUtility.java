@@ -34,8 +34,11 @@ public class GraphUtility {
 	
 	public static <Type> List<Type> shortestWeightedPathWithPriorityQueue(List<Type> sources, List<Type> destinations, 
 			List<Double> weights, Type srcData, Type dstData) throws IllegalArgumentException {
-		// TODO: Fill in and add Javadoc comment.
-		return null;
+		if (sources.size() != destinations.size() || sources.size() != weights.size())
+	        throw new IllegalArgumentException("Lists must have the same size.");
+	    
+	    Graph<Type> graph = buildGraph(sources, destinations, weights);
+	    return graph.shortestWeightedPathWithPriorityQueue(srcData, dstData);
 	}
 	
 	/**
@@ -68,8 +71,8 @@ public class GraphUtility {
 			public LinkedList<Edge<VertexType>> adjacencyList;
 			public Vertex<VertexType> previous;	
 			public double distanceFromStart;
-			// TODO: Add instance variable to mark vertex as visited, as needed by Dijkstra's
-			// algorithm (priority-queue version).
+			public boolean visited; 
+			
 			
 			/**
 			 * Creates a vertex that contains the given data.
@@ -81,6 +84,7 @@ public class GraphUtility {
 				this.adjacencyList = new LinkedList<Edge<VertexType>>();
 				this.previous = null;
 				this.distanceFromStart = Double.MAX_VALUE;
+				this.visited = false;
 			}
 
 			/**
@@ -112,7 +116,22 @@ public class GraphUtility {
 				this.weight = weight;
 			}
 		}
-
+        
+		private static class VertexDistancePair<PairType> implements Comparable<VertexDistancePair<PairType>> {
+		    public Vertex<PairType> vertex;
+		    public double distance;
+		    
+		    public VertexDistancePair(Vertex<PairType> vertex, double distance) {
+		        this.vertex = vertex;
+		        this.distance = distance;
+		    }
+		    
+		    @Override
+		    public int compareTo(VertexDistancePair<PairType> other) {
+		        return Double.compare(this.distance, other.distance);
+		    }
+		}
+		
 		private HashMap<GraphType, Vertex<GraphType>> vertices;
 
 		/**
@@ -193,9 +212,55 @@ public class GraphUtility {
 		}
 		
 		public List<GraphType> shortestWeightedPathWithPriorityQueue(GraphType startData, GraphType endData) {
-			// TODO: Fill in and add Javadoc comment.  Add "visited" variable to Vertex class, as needed by algorithm.
-			return null;
+		    Vertex<GraphType> startingVertex = vertices.get(startData);
+		    if(startingVertex == null)
+		        throw new IllegalArgumentException("Vertex " + startData + " does not exist.");
+		    Vertex<GraphType> endingVertex = vertices.get(endData);
+		    if(endingVertex == null)
+		        throw new IllegalArgumentException("Vertex " + endData + " does not exist.");
+		    
+		    for(Vertex<GraphType> vertex : vertices.values()) {
+		        vertex.distanceFromStart = Double.MAX_VALUE;
+		        vertex.previous = null;
+		        vertex.visited = false;
+		    }
+		    
+		    startingVertex.distanceFromStart = 0;
+		    
+		    BinaryMinHeap<VertexDistancePair<GraphType>> pq = new BinaryMinHeap<>();
+		    pq.add(new VertexDistancePair<>(startingVertex, 0));
+		    
+		    while(!pq.isEmpty()) {
+		        VertexDistancePair<GraphType> currentPair = pq.extract();
+		        Vertex<GraphType> currentVertex = currentPair.vertex;
+		        double currentDistance = currentPair.distance;
+		        
+		        if(currentVertex.visited || currentDistance > currentVertex.distanceFromStart)
+		            continue;
+		        
+		        currentVertex.visited = true;
+		        
+		        if(currentVertex.data.equals(endData))
+		            return generatePath(endingVertex, startData);
+		        
+		        for(Edge<GraphType> edge : currentVertex.adjacencyList) {
+		            Vertex<GraphType> neighbor = edge.destination;
+		            
+		            if(!neighbor.visited) {
+		                double newDistance = currentDistance + edge.weight;
+		                
+		                if(newDistance < neighbor.distanceFromStart) {
+		                    neighbor.distanceFromStart = newDistance;
+		                    neighbor.previous = currentVertex;
+		                    pq.add(new VertexDistancePair<>(neighbor, newDistance));
+		                }
+		            }
+		        }
+		    }
+		    
+		    throw new IllegalArgumentException("There is no path between vertex " + startData + " and vertex " + endData + ".");
 		}
+		
 		
 		/**
 		 * Generates an ordered list of data for the vertices that make up the path defined by 
